@@ -1,0 +1,15 @@
+# environment
+.env
+venv/
+__pycache__/
+*.pyc
+
+# logs
+usage_log.jsonl
+
+# editor
+.vscode/
+.idea/
+
+# os
+.DS_Store
