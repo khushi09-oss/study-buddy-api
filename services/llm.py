@@ -1,9 +1,31 @@
-import anthropic
 import json
+from typing import Any
+
+import requests
+
 from core.config import settings
 from models.schemas import StudyResponse, QuizQuestion, Difficulty
 
-client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+def _extract_generated_text(response_data: Any) -> str:
+  if isinstance(response_data, dict):
+    if "error" in response_data:
+      raise RuntimeError(str(response_data["error"]))
+    candidates = response_data.get("candidates", [])
+    if candidates:
+      content = candidates[0].get("content", {})
+      parts = content.get("parts", [])
+      if parts and isinstance(parts[0], dict) and "text" in parts[0]:
+        return parts[0]["text"]
+  raise RuntimeError("Unexpected response format from Gemini")
+
+
+def _extract_json_object(text: str) -> str:
+  start = text.find("{")
+  end = text.rfind("}")
+  if start == -1 or end == -1 or end <= start:
+    return text.strip()
+  return text[start : end + 1]
 
 async def generate_study_material(topic: str, difficulty: Difficulty, num_questions: int) -> StudyResponse:
 
@@ -27,14 +49,21 @@ Return this exact JSON structure, nothing else:
   "estimated_read_minutes": 3
 }}"""
     
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}]
+    response = requests.post(
+      f"https://generativelanguage.googleapis.com/v1beta/models/{settings.gemini_model}:generateContent?key={settings.gemini_api_key}",
+      json={
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+          "temperature": 0.2,
+          "maxOutputTokens": 1200,
+        },
+      },
+      timeout=60,
     )
+    response.raise_for_status()
 
-    raw = message.content[0].text
-    data = json.loads(raw)
+    raw = _extract_generated_text(response.json())
+    data = json.loads(_extract_json_object(raw))
 
     return StudyResponse(
         topic=topic,
