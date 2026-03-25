@@ -43,3 +43,7 @@ Return this exact JSON structure, nothing else:
         questions=[QuizQuestion(**q) for q in data["questions"]],
         estimated_read_minutes=data["estimated_read_minutes"]
     )
+
+
+async def generate_study_content(topic: str, difficulty: Difficulty, num_questions: int) -> StudyResponse:
+    return await generate_study_material(topic, difficulty, num_questions)

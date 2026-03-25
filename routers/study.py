@@ -1,6 +1,7 @@
-from asyncio import tasks
 import json
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from pathlib import Path
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header, status
 from models.schemas import StudyRequest, StudyResponse, ErrorResponse
 from services.llm import generate_study_content
 from core.config import settings
@@ -32,11 +33,6 @@ async def generate_study_material(request: StudyRequest, api_key: str= Depends(v
 async def health():
     return {"status": "ok", "service": settings.app_name}
 
-
-from fastapi import BackgroundTasks
-import json
-from pathlib import Path
-
 def save_to_log(topic: str, result: StudyResponse):
     """Runs after response is sent - user doesn't wait for this"""
     log = Path("usage_log.jsonl")
@@ -52,7 +48,7 @@ async def generate_with_logging(
     api_key: str= Depends(verify_api_key)
 ):
     result = await generate_study_content(
-        request.topic, request.difficulty, request.nun_questions
+        request.topic, request.difficulty, request.num_questions
     )
     background_tasks.add_task(save_to_log, request.topic, result)
     return result

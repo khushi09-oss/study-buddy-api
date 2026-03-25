@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-from typing import Optional
 from enum import Enum
 
 class Difficulty(str, Enum):
@@ -11,6 +10,9 @@ class StudyMaterial(BaseModel):
     topic: str = Field(..., min_length=3, max_length=200, description="The topic to study")
     difficulty: Difficulty = Difficulty.medium
     num_questions: int = Field(default=5, ge=1, le=10)
+
+class StudyRequest(StudyMaterial):
+    pass
 
 class QuizQuestion(BaseModel):
     question: str
