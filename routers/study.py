@@ -1,3 +1,4 @@
+from asyncio import tasks
 import json
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from models.schemas import StudyRequest, StudyResponse, ErrorResponse
@@ -30,3 +31,29 @@ async def generate_study_material(request: StudyRequest, api_key: str= Depends(v
 @router.get("/health", summary="Check if API is running")
 async def health():
     return {"status": "ok", "service": settings.app_name}
+
+
+from fastapi import BackgroundTasks
+import json
+from pathlib import Path
+
+def save_to_log(topic: str, result: StudyResponse):
+    """Runs after response is sent - user doesn't wait for this"""
+    log = Path("usage_log.jsonl")
+    entry= {"topic": topic, "questions": len(result.questions)}
+    with open(log, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+@router.post("/generate-async", response_model=StudyResponse)
+async def generate_with_logging(
+    request: StudyRequest,
+    background_tasks: BackgroundTasks,
+    api_key: str= Depends(verify_api_key)
+):
+    result = await generate_study_content(
+        request.topic, request.difficulty, request.nun_questions
+    )
+    background_tasks.add_task(save_to_log, request.topic, result)
+    return result
+             
